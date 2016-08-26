@@ -65,12 +65,12 @@ describe('Remote Frame Buffer Protocol Client', function() {
         });
 
         describe('#connect', function () {
-            beforeEach(function () { client._updateState = sinon.spy(); });
+            beforeEach(function () { client._updateConnectionState = sinon.spy(); });
 
             it('should set the current state to "connect"', function () {
                 client.connect('host', 8675);
-                expect(client._updateState).to.have.been.calledOnce;
-                expect(client._updateState).to.have.been.calledWith('connect');
+                expect(client._updateConnectionState).to.have.been.calledOnce;
+                expect(client._updateConnectionState).to.have.been.calledWith('connect');
             });
 
             it('should fail if we are missing a host', function () {
@@ -89,18 +89,18 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 sinon.spy(client, '_fail');
                 client.connect('abc');
                 expect(client._fail).to.have.been.calledOnce;
-                expect(client._updateState).to.have.been.calledOnce;
-                expect(client._updateState).to.have.been.calledWith('failed');
+                expect(client._updateConnectionState).to.have.been.calledOnce;
+                expect(client._updateConnectionState).to.have.been.calledWith('failed');
             });
         });
 
         describe('#disconnect', function () {
-            beforeEach(function () { client._updateState = sinon.spy(); });
+            beforeEach(function () { client._updateConnectionState = sinon.spy(); });
 
             it('should set the current state to "disconnect"', function () {
                 client.disconnect();
-                expect(client._updateState).to.have.been.calledOnce;
-                expect(client._updateState).to.have.been.calledWith('disconnect');
+                expect(client._updateConnectionState).to.have.been.calledOnce;
+                expect(client._updateConnectionState).to.have.been.calledWith('disconnect');
             });
 
             it('should unregister error event handler', function () {
@@ -145,7 +145,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client._sock.open('ws://', 'binary');
                 client._sock._websocket._open();
                 sinon.spy(client._sock, 'flush');
-                client._rfb_state = "normal";
+                client._rfb_connection_state = "normal";
                 client._view_only = false;
             });
 
@@ -163,7 +163,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
             });
 
             it('should not send the keys if we are not in a normal state', function () {
-                client._rfb_state = "broken";
+                client._rfb_connection_state = "broken";
                 client.sendCtrlAltDel();
                 expect(client._sock.flush).to.not.have.been.called;
             });
@@ -181,7 +181,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client._sock.open('ws://', 'binary');
                 client._sock._websocket._open();
                 sinon.spy(client._sock, 'flush');
-                client._rfb_state = "normal";
+                client._rfb_connection_state = "normal";
                 client._view_only = false;
             });
 
@@ -201,7 +201,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
             });
 
             it('should not send the key if we are not in a normal state', function () {
-                client._rfb_state = "broken";
+                client._rfb_connection_state = "broken";
                 client.sendKey(123);
                 expect(client._sock.flush).to.not.have.been.called;
             });
@@ -219,7 +219,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client._sock.open('ws://', 'binary');
                 client._sock._websocket._open();
                 sinon.spy(client._sock, 'flush');
-                client._rfb_state = "normal";
+                client._rfb_connection_state = "normal";
                 client._view_only = false;
             });
 
@@ -231,7 +231,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
             });
 
             it('should not send the text if we are not in a normal state', function () {
-                client._rfb_state = "broken";
+                client._rfb_connection_state = "broken";
                 client.clipboardPasteFrom('abc');
                 expect(client._sock.flush).to.not.have.been.called;
             });
@@ -243,7 +243,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client._sock.open('ws://', 'binary');
                 client._sock._websocket._open();
                 sinon.spy(client._sock, 'flush');
-                client._rfb_state = "normal";
+                client._rfb_connection_state = "normal";
                 client._view_only = false;
                 client._supportsSetDesktopSize = true;
             });
@@ -273,7 +273,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
             });
 
             it('should not send the request if we are not in a normal state', function () {
-                client._rfb_state = "broken";
+                client._rfb_connection_state = "broken";
                 client.requestDesktopSize(1,2);
                 expect(client._sock.flush).to.not.have.been.called;
             });
@@ -285,7 +285,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client._sock.open('ws://', 'binary');
                 client._sock._websocket._open();
                 sinon.spy(client._sock, 'flush');
-                client._rfb_state = "normal";
+                client._rfb_connection_state = "normal";
                 client._view_only = false;
                 client._rfb_xvp_ver = 1;
             });
@@ -318,7 +318,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
     });
 
     describe('Misc Internals', function () {
-        describe('#_updateState', function () {
+        describe('#_updateConnectionState', function () {
             var client;
             beforeEach(function () {
                 this.clock = sinon.useFakeTimers();
@@ -332,7 +332,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
             it('should clear the disconnect timer if the state is not disconnect', function () {
                 var spy = sinon.spy();
                 client._disconnTimer = setTimeout(spy, 50);
-                client._updateState('normal');
+                client._updateConnectionState('normal');
                 this.clock.tick(51);
                 expect(spy).to.not.have.been.called;
                 expect(client._disconnTimer).to.be.null;
@@ -354,17 +354,17 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
     });
 
-    describe('Page States', function () {
+    describe('Connection States', function () {
         describe('loaded', function () {
             var client;
             beforeEach(function () {
                 client = make_rfb();
-                client._rfb_state = 'disconnected';
+                client._rfb_connection_state = 'disconnected';
             });
 
             it('should close any open WebSocket connection', function () {
                 sinon.spy(client._sock, 'close');
-                client._updateState('loaded');
+                client._updateConnectionState('loaded');
                 expect(client._sock.close).to.have.been.calledOnce;
             });
         });
@@ -375,7 +375,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should close any open WebSocket connection', function () {
                 sinon.spy(client._sock, 'close');
-                client._updateState('disconnected');
+                client._updateConnectionState('disconnected');
                 expect(client._sock.close).to.have.been.calledOnce;
             });
         });
@@ -386,27 +386,27 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should reset the variable states', function () {
                 sinon.spy(client, '_init_vars');
-                client._updateState('connect');
+                client._updateConnectionState('connect');
                 expect(client._init_vars).to.have.been.calledOnce;
             });
 
             it('should actually connect to the websocket', function () {
                 sinon.spy(client._sock, 'open');
-                client._updateState('connect');
+                client._updateConnectionState('connect');
                 expect(client._sock.open).to.have.been.calledOnce;
             });
 
             it('should use wss:// to connect if encryption is enabled', function () {
                 sinon.spy(client._sock, 'open');
                 client.set_encrypt(true);
-                client._updateState('connect');
+                client._updateConnectionState('connect');
                 expect(client._sock.open.args[0][0]).to.contain('wss://');
             });
 
             it('should use ws:// to connect if encryption is not enabled', function () {
                 sinon.spy(client._sock, 'open');
                 client.set_encrypt(true);
-                client._updateState('connect');
+                client._updateConnectionState('connect');
                 expect(client._sock.open.args[0][0]).to.contain('wss://');
             });
 
@@ -416,13 +416,13 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client._rfb_host = 'HOST';
                 client._rfb_port = 8675;
                 client._rfb_path = 'PATH';
-                client._updateState('connect');
+                client._updateConnectionState('connect');
                 expect(client._sock.open).to.have.been.calledWith('ws://HOST:8675/PATH');
             });
 
             it('should attempt to close the websocket before we open an new one', function () {
                 sinon.spy(client._sock, 'close');
-                client._updateState('connect');
+                client._updateConnectionState('connect');
                 expect(client._sock.close).to.have.been.calledOnce;
             });
         });
@@ -441,22 +441,22 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should fail if we do not call Websock.onclose within the disconnection timeout', function () {
                 client._sock._websocket.close = function () {};  // explicitly don't call onclose
-                client._updateState('disconnect');
+                client._updateConnectionState('disconnect');
                 this.clock.tick(client.get_disconnectTimeout() * 1000);
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
             });
 
             it('should not fail if Websock.onclose gets called within the disconnection timeout', function () {
-                client._updateState('disconnect');
+                client._updateConnectionState('disconnect');
                 this.clock.tick(client.get_disconnectTimeout() * 500);
                 client._sock._websocket.close();
                 this.clock.tick(client.get_disconnectTimeout() * 500 + 1);
-                expect(client._rfb_state).to.equal('disconnected');
+                expect(client._rfb_connection_state).to.equal('disconnected');
             });
 
             it('should close the WebSocket connection', function () {
                 sinon.spy(client._sock, 'close');
-                client._updateState('disconnect');
+                client._updateConnectionState('disconnect');
                 expect(client._sock.close).to.have.been.calledTwice; // once on loaded, once on disconnect
             });
         });
@@ -475,15 +475,15 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should close the WebSocket connection', function () {
                 sinon.spy(client._sock, 'close');
-                client._updateState('failed');
+                client._updateConnectionState('failed');
                 expect(client._sock.close).to.have.been.called;
             });
 
             it('should transition to disconnected but stay in failed state', function () {
                 client.set_onUpdateState(sinon.spy());
-                client._updateState('failed');
+                client._updateConnectionState('failed');
                 this.clock.tick(50);
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
 
                 var onUpdateState = client.get_onUpdateState();
                 expect(onUpdateState).to.have.been.called;
@@ -500,12 +500,12 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should close any open WebSocket connection', function () {
                 sinon.spy(client._sock, 'close');
-                client._updateState('fatal');
+                client._updateConnectionState('fatal');
                 expect(client._sock.close).to.have.been.calledOnce;
             });
         });
 
-        // NB(directxman12): Normal does *nothing* in updateState
+        // NB(directxman12): Normal does *nothing* in updateConnectionState
     });
 
     describe('Protocol Initialization States', function () {
@@ -587,7 +587,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
                 it('should fail on an invalid version', function () {
                     send_ver('002.000', client);
-                    expect(client._rfb_state).to.equal('failed');
+                    expect(client._rfb_connection_state).to.equal('failed');
                 });
             });
 
@@ -625,7 +625,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should transition to the Security state on successful negotiation', function () {
                 send_ver('003.008', client);
-                expect(client._rfb_state).to.equal('Security');
+                expect(client._rfb_init_state).to.equal('Security');
             });
         });
 
@@ -636,7 +636,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client = make_rfb();
                 client.connect('host', 8675);
                 client._sock._websocket._open();
-                client._rfb_state = 'Security';
+                client._rfb_init_state = 'Security';
             });
 
             it('should simply receive the auth scheme when for versions < 3.7', function () {
@@ -660,7 +660,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client._rfb_version = 3.7;
                 var auth_schemes = [1, 32];
                 client._sock._websocket._receive_data(auth_schemes);
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
             });
 
             it('should fail with the appropriate message if no types are sent for versions >= 3.7', function () {
@@ -678,7 +678,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 var auth_schemes = [1, 1];
                 client._negotiate_authentication = sinon.spy();
                 client._sock._websocket._receive_data(auth_schemes);
-                expect(client._rfb_state).to.equal('Authentication');
+                expect(client._rfb_init_state).to.equal('Authentication');
                 expect(client._negotiate_authentication).to.have.been.calledOnce;
             });
         });
@@ -690,7 +690,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client = make_rfb();
                 client.connect('host', 8675);
                 client._sock._websocket._open();
-                client._rfb_state = 'Security';
+                client._rfb_init_state = 'Security';
             });
 
             function send_security(type, cl) {
@@ -709,28 +709,26 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
                 sinon.spy(client, '_fail');
                 client._sock._websocket._receive_data(new Uint8Array(data));
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
                 expect(client._fail).to.have.been.calledWith('Auth failure: Whoopsies');
             });
 
             it('should transition straight to SecurityResult on "no auth" (1) for versions >= 3.8', function () {
                 client._rfb_version = 3.8;
                 send_security(1, client);
-                expect(client._rfb_state).to.equal('SecurityResult');
+                expect(client._rfb_init_state).to.equal('SecurityResult');
             });
 
-            it('should transition straight to ClientInitialisation on "no auth" for versions < 3.8', function () {
+            it('should transition straight to ServerInitialisation on "no auth" for versions < 3.8', function () {
                 client._rfb_version = 3.7;
-                sinon.spy(client, '_updateState');
                 send_security(1, client);
-                expect(client._updateState).to.have.been.calledWith('ClientInitialisation');
-                expect(client._rfb_state).to.equal('ServerInitialisation');
+                expect(client._rfb_init_state).to.equal('ServerInitialisation');
             });
 
             it('should fail on an unknown auth scheme', function () {
                 client._rfb_version = 3.8;
                 send_security(57, client);
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
             });
 
             describe('VNC Authentication (type 2) Handler', function () {
@@ -740,7 +738,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                     client = make_rfb();
                     client.connect('host', 8675);
                     client._sock._websocket._open();
-                    client._rfb_state = 'Security';
+                    client._rfb_init_state = 'Security';
                     client._rfb_version = 3.8;
                 });
 
@@ -774,7 +772,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                     for (var i = 0; i < 16; i++) { challenge[i] = i; }
                     client._sock._websocket._receive_data(new Uint8Array(challenge));
 
-                    expect(client._rfb_state).to.equal('SecurityResult');
+                    expect(client._rfb_init_state).to.equal('SecurityResult');
                 });
             });
 
@@ -785,7 +783,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                     client = make_rfb();
                     client.connect('host', 8675);
                     client._sock._websocket._open();
-                    client._rfb_state = 'Security';
+                    client._rfb_init_state = 'Security';
                     client._rfb_version = 3.8;
                 });
 
@@ -839,7 +837,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                     client = make_rfb();
                     client.connect('host', 8675);
                     client._sock._websocket._open();
-                    client._rfb_state = 'Security';
+                    client._rfb_init_state = 'Security';
                     client._rfb_version = 3.8;
                     send_security(16, client);
                     client._sock._websocket._get_sent_data();  // skip the security reply
@@ -871,7 +869,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
                 it('should fail if no supported tunnels are listed', function () {
                     send_num_str_pairs([[123, 'OTHR', 'SOMETHNG']], client);
-                    expect(client._rfb_state).to.equal('failed');
+                    expect(client._rfb_connection_state).to.equal('failed');
                 });
 
                 it('should choose the notunnel tunnel type', function () {
@@ -884,7 +882,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                     client._sock._websocket._get_sent_data();  // skip the tunnel choice here
                     send_num_str_pairs([[1, 'STDV', 'NOAUTH__']], client);
                     expect(client._sock).to.have.sent(new Uint8Array([0, 0, 0, 1]));
-                    expect(client._rfb_state).to.equal('SecurityResult');
+                    expect(client._rfb_init_state).to.equal('SecurityResult');
                 });
 
                 /*it('should attempt to use VNC auth over no auth when possible', function () {
@@ -900,7 +898,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                     client._rfb_tightvnc = true;
                     send_num_str_pairs([[1, 'STDV', 'NOAUTH__']], client);
                     expect(client._sock).to.have.sent(new Uint8Array([0, 0, 0, 1]));
-                    expect(client._rfb_state).to.equal('SecurityResult');
+                    expect(client._rfb_init_state).to.equal('SecurityResult');
                 });
 
                 it('should accept VNC authentication and transition to that', function () {
@@ -915,7 +913,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 it('should fail if there are no supported auth types', function () {
                     client._rfb_tightvnc = true;
                     send_num_str_pairs([[23, 'stdv', 'badval__']], client);
-                    expect(client._rfb_state).to.equal('failed');
+                    expect(client._rfb_connection_state).to.equal('failed');
                 });
             });
         });
@@ -927,14 +925,13 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client = make_rfb();
                 client.connect('host', 8675);
                 client._sock._websocket._open();
-                client._rfb_state = 'SecurityResult';
+                client._rfb_init_state = 'SecurityResult';
             });
 
-            it('should fall through to ClientInitialisation on a response code of 0', function () {
-                client._updateState = sinon.spy();
+            it('should fall through to ServerInitialisation on a response code of 0', function () {
+                client._updateConnectionState = sinon.spy();
                 client._sock._websocket._receive_data(new Uint8Array([0, 0, 0, 0]));
-                expect(client._updateState).to.have.been.calledOnce;
-                expect(client._updateState).to.have.been.calledWith('ClientInitialisation');
+                expect(client._rfb_init_state).to.equal('ServerInitialisation');
             });
 
             it('should fail on an error code of 1 with the given message for versions >= 3.8', function () {
@@ -942,14 +939,14 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 sinon.spy(client, '_fail');
                 var failure_data = [0, 0, 0, 1, 0, 0, 0, 6, 119, 104, 111, 111, 112, 115];
                 client._sock._websocket._receive_data(new Uint8Array(failure_data));
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
                 expect(client._fail).to.have.been.calledWith('whoops');
             });
 
             it('should fail on an error code of 1 with a standard message for version < 3.8', function () {
                 client._rfb_version = 3.7;
                 client._sock._websocket._receive_data(new Uint8Array([0, 0, 0, 1]));
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
             });
         });
 
@@ -960,12 +957,12 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client = make_rfb();
                 client.connect('host', 8675);
                 client._sock._websocket._open();
-                client._rfb_state = 'SecurityResult';
+                client._rfb_init_state = 'SecurityResult';
             });
 
             it('should transition to the ServerInitialisation state', function () {
                 client._sock._websocket._receive_data(new Uint8Array([0, 0, 0, 0]));
-                expect(client._rfb_state).to.equal('ServerInitialisation');
+                expect(client._rfb_init_state).to.equal('ServerInitialisation');
             });
 
             it('should send 1 if we are in shared mode', function () {
@@ -988,7 +985,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client = make_rfb();
                 client.connect('host', 8675);
                 client._sock._websocket._open();
-                client._rfb_state = 'ServerInitialisation';
+                client._rfb_init_state = 'ServerInitialisation';
             });
 
             function send_server_init(opts, client) {
@@ -1064,7 +1061,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 }
                 client._sock._websocket._receive_data(tight_data);
 
-                expect(client._rfb_state).to.equal('normal');
+                expect(client._rfb_connection_state).to.equal('normal');
             });
 
             it('should set the true color mode on the display to the configuration variable', function () {
@@ -1128,7 +1125,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should transition to the "normal" state', function () {
                 send_server_init({}, client);
-                expect(client._rfb_state).to.equal('normal');
+                expect(client._rfb_connection_state).to.equal('normal');
             });
         });
     });
@@ -1140,7 +1137,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
             client = make_rfb();
             client.connect('host', 8675);
             client._sock._websocket._open();
-            client._rfb_state = 'normal';
+            client._rfb_connection_state = 'normal';
             client._fb_name = 'some device';
             client._fb_width = 640;
             client._fb_height = 20;
@@ -1153,7 +1150,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client = make_rfb();
                 client.connect('host', 8675);
                 client._sock._websocket._open();
-                client._rfb_state = 'normal';
+                client._rfb_connection_state = 'normal';
                 client._fb_name = 'some device';
                 client._fb_width = 640;
                 client._fb_height = 20;
@@ -1314,7 +1311,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client.set_onFBUReceive(sinon.spy());
                 var rect_info = { x: 8, y: 11, width: 27, height: 32, encoding: 234 };
                 send_fbu_msg([rect_info], [[]], client);
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
             });
 
             it('should be able to pause and resume receiving rects if not enought data', function () {
@@ -1343,7 +1340,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                     client = make_rfb();
                     client.connect('host', 8675);
                     client._sock._websocket._open();
-                    client._rfb_state = 'normal';
+                    client._rfb_connection_state = 'normal';
                     client._fb_name = 'some device';
                     // a really small frame
                     client._fb_width = 4;
@@ -1420,7 +1417,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                         client = make_rfb();
                         client.connect('host', 8675);
                         client._sock._websocket._open();
-                        client._rfb_state = 'normal';
+                        client._rfb_connection_state = 'normal';
                         client._fb_name = 'some device';
                         // a really small frame
                         client._fb_width = 4;
@@ -1561,7 +1558,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                         var info = [{ x: 0, y: 0, width: 4, height: 4, encoding: 0x05 }];
                         var rects = [[45]];  // an invalid subencoding
                         send_fbu_msg(info, rects, client);
-                        expect(client._rfb_state).to.equal('failed');
+                        expect(client._rfb_connection_state).to.equal('failed');
                     });
                 });
 
@@ -1596,7 +1593,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                         client = make_rfb();
                         client.connect('host', 8675);
                         client._sock._websocket._open();
-                        client._rfb_state = 'normal';
+                        client._rfb_connection_state = 'normal';
                         client._fb_name = 'some device';
                         client._supportsSetDesktopSize = false;
                         // a really small frame
@@ -1738,7 +1735,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client = make_rfb();
                 client.connect('host', 8675);
                 client._sock._websocket._open();
-                client._rfb_state = 'normal';
+                client._rfb_connection_state = 'normal';
                 client._fb_name = 'some device';
                 client._fb_width = 27;
                 client._fb_height = 32;
@@ -1762,7 +1759,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should fail on unknown XVP message types', function () {
                 client._sock._websocket._receive_data(new Uint8Array([250, 0, 10, 237]));
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
             });
         });
 
@@ -1855,7 +1852,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
         it('should fail on an unknown message type', function () {
             client._sock._websocket._receive_data(new Uint8Array([87]));
-            expect(client._rfb_state).to.equal('failed');
+            expect(client._rfb_connection_state).to.equal('failed');
         });
     });
 
@@ -1868,7 +1865,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
                 client._sock.open('ws://', 'binary');
                 client._sock._websocket._open();
                 sinon.spy(client._sock, 'flush');
-                client._rfb_state = 'normal';
+                client._rfb_connection_state = 'normal';
             });
 
             it('should not send button messages in view-only mode', function () {
@@ -2009,7 +2006,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
             // message events
             it ('should do nothing if we receive an empty message and have nothing in the queue', function () {
                 client.connect('host', 8675);
-                client._rfb_state = 'normal';
+                client._rfb_connection_state = 'normal';
                 client._normal_msg = sinon.spy();
                 client._sock._websocket._receive_data(new Uint8Array([]));
                 expect(client._normal_msg).to.not.have.been.called;
@@ -2017,7 +2014,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should handle a message in the normal state as a normal message', function () {
                 client.connect('host', 8675);
-                client._rfb_state = 'normal';
+                client._rfb_connection_state = 'normal';
                 client._normal_msg = sinon.spy();
                 client._sock._websocket._receive_data(new Uint8Array([1, 2, 3]));
                 expect(client._normal_msg).to.have.been.calledOnce;
@@ -2025,7 +2022,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
 
             it('should handle a message in any non-disconnected/failed state like an init message', function () {
                 client.connect('host', 8675);
-                client._rfb_state = 'ProtocolVersion';
+                client._rfb_init_state = 'ProtocolVersion';
                 client._init_msg = sinon.spy();
                 client._sock._websocket._receive_data(new Uint8Array([1, 2, 3]));
                 expect(client._init_msg).to.have.been.calledOnce;
@@ -2034,7 +2031,7 @@ describe('Remote Frame Buffer Protocol Client', function() {
             it('should split up the handling of muplitle normal messages across 10ms intervals', function () {
                 client.connect('host', 8675);
                 client._sock._websocket._open();
-                client._rfb_state = 'normal';
+                client._rfb_connection_state = 'normal';
                 client.set_onBell(sinon.spy());
                 client._sock._websocket._receive_data(new Uint8Array([0x02, 0x02]));
                 expect(client.get_onBell()).to.have.been.calledOnce;
@@ -2046,35 +2043,35 @@ describe('Remote Frame Buffer Protocol Client', function() {
             it('should update the state to ProtocolVersion on open (if the state is "connect")', function () {
                 client.connect('host', 8675);
                 client._sock._websocket._open();
-                expect(client._rfb_state).to.equal('ProtocolVersion');
+                expect(client._rfb_init_state).to.equal('ProtocolVersion');
             });
 
             it('should fail if we are not currently ready to connect and we get an "open" event', function () {
                 client.connect('host', 8675);
-                client._rfb_state = 'some_other_state';
+                client._rfb_connection_state = 'some_other_state';
                 client._sock._websocket._open();
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
             });
 
             // close events
             it('should transition to "disconnected" from "disconnect" on a close event', function () {
                 client.connect('host', 8675);
-                client._rfb_state = 'disconnect';
+                client._rfb_connection_state = 'disconnect';
                 client._sock._websocket.close();
-                expect(client._rfb_state).to.equal('disconnected');
+                expect(client._rfb_connection_state).to.equal('disconnected');
             });
 
             it('should transition to failed if we get a close event from any non-"disconnection" state', function () {
                 client.connect('host', 8675);
-                client._rfb_state = 'normal';
+                client._rfb_connection_state = 'normal';
                 client._sock._websocket.close();
-                expect(client._rfb_state).to.equal('failed');
+                expect(client._rfb_connection_state).to.equal('failed');
             });
 
             it('should unregister close event handler', function () {
                 sinon.spy(client._sock, 'off');
                 client.connect('host', 8675);
-                client._rfb_state = 'disconnect';
+                client._rfb_connection_state = 'disconnect';
                 client._sock._websocket.close();
                 expect(client._sock.off).to.have.been.calledWith('close');
             });
