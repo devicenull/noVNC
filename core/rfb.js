@@ -158,6 +158,7 @@
 
         // Callback functions
         'onUpdateState': function () { },       // onUpdateState(rfb, state, oldstate, statusMsg): state update/change
+        'onNotification': function () { },      // onNotification(rfb, msg, options): notification for UI
         'onPasswordRequired': function () { },  // onPasswordRequired(rfb, msg): VNC password is required
         'onClipboard': function () { },         // onClipboard(rfb, text): RFB clipboard contents received
         'onBell': function () { },              // onBell(rfb): RFB Bell message received
@@ -533,6 +534,23 @@
         _fail: function (msg) {
             this._updateState('failed', msg);
             return false;
+        },
+
+        /*
+         * Send a notification to the UI. Accepted optional options are:
+         *    { level: 'warn'|'error' }
+         *
+         *   NOTE: More options could be added in the future.
+         *   NOTE: If this function is called multiple times, remember that the
+         *         interface could be only showing the latest notification.
+         */
+        _notification: function(msg, options) {
+            Util.Debug("Notification: " + msg);
+            if (options) {
+                this._onNotification(this, msg, options);
+            } else {
+                this._onNotification(this, msg);
+            }
         },
 
         _handle_message: function () {
@@ -1130,7 +1148,8 @@
 
             switch (xvp_msg) {
                 case 0:  // XVP_FAIL
-                    this._updateState(this._rfb_state, "Operation Failed");
+                    Util.Error("Operation Failed");
+                    this._notification("XVP Operation Failed", {level: 'error'});
                     break;
                 case 1:  // XVP_INIT
                     this._rfb_xvp_ver = xvp_ver;
@@ -1322,6 +1341,7 @@
 
         // Callback functions
         ['onUpdateState', 'rw', 'func'],        // onUpdateState(rfb, state, oldstate, statusMsg): RFB state update/change
+        ['onNotification', 'rw', 'func'],       // onNotification(rfb, msg, options): notification for the UI
         ['onPasswordRequired', 'rw', 'func'],   // onPasswordRequired(rfb, msg): VNC password is required
         ['onClipboard', 'rw', 'func'],          // onClipboard(rfb, text): RFB clipboard contents received
         ['onBell', 'rw', 'func'],               // onBell(rfb): RFB Bell message received
@@ -2275,7 +2295,7 @@
                     msg = "Unknown reason";
                     break;
                 }
-                Util.Info("Server did not accept the resize request: " + msg);
+                this._notification("Server did not accept the resize request: " + msg);
                 return true;
             }
 

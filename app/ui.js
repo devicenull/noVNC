@@ -202,6 +202,7 @@ var UI;
         initRFB: function() {
             try {
                 UI.rfb = new RFB({'target': document.getElementById('noVNC_canvas'),
+                                  'onNotification': UI.notification,
                                   'onUpdateState': UI.updateState,
                                   'onPasswordRequired': UI.passwordRequired,
                                   'onXvpInit': UI.updateXvpButton,
@@ -363,6 +364,10 @@ var UI;
             }
 
             //Util.Debug("<< updateVisualState");
+        },
+
+        notification: function (rfb, msg, options) {
+            UI.popupStatus(msg);
         },
 
         popupStatus: function(text) {
