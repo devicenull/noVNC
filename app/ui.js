@@ -171,7 +171,7 @@ var UI;
             // While connected we want to display a confirmation dialogue
             // if the user tries to leave the page
             window.addEventListener('beforeunload', function (e) {
-                if (UI.rfb && UI.rfb_state === 'normal') {
+                if (UI.rfb && UI.rfb_state === 'connected') {
                     var msg = "You are currently connected.";
                     e.returnValue = msg;
                     return msg;
@@ -278,7 +278,7 @@ var UI;
                 case 'fatal':
                     klass = "noVNC_status_error";
                     break;
-                case 'normal':
+                case 'connected':
                     klass = "noVNC_status_normal";
                     break;
                 case 'disconnected':
@@ -305,7 +305,7 @@ var UI;
 
         // Disable/enable controls depending on connection state
         updateVisualState: function() {
-            var connected = UI.rfb && UI.rfb_state === 'normal';
+            var connected = UI.rfb && UI.rfb_state === 'connected';
 
             //Util.Debug(">> updateVisualState");
             document.getElementById('noVNC_setting_encrypt').disabled = connected;
@@ -851,7 +851,7 @@ var UI;
 
             var screen = UI.screenSize();
 
-            if (screen && UI.rfb_state === 'normal' && UI.rfb.get_display()) {
+            if (screen && UI.rfb_state === 'connected' && UI.rfb.get_display()) {
 
                 var display = UI.rfb.get_display();
                 var resizeMode = UI.getSetting('resize');
@@ -980,7 +980,7 @@ var UI;
         // Handle special cases where clipping is forced on/off or locked
         enableDisableViewClip: function() {
             var resizeSetting = document.getElementById('noVNC_setting_resize');
-            var connected = UI.rfb && UI.rfb_state === 'normal';
+            var connected = UI.rfb && UI.rfb_state === 'connected';
 
             if (UI.isSafari) {
                 // Safari auto-hides the scrollbars which makes them
@@ -1025,7 +1025,7 @@ var UI;
 
             // Check if viewport drag is possible. It is only possible
             // if the remote display is clipping the client display.
-            if (UI.rfb_state === 'normal' &&
+            if (UI.rfb_state === 'connected' &&
                 UI.rfb.get_display().get_viewport() &&
                 UI.rfb.get_display().clippingDisplay()) {
 
@@ -1042,7 +1042,7 @@ var UI;
                 }
 
                 // The button is disabled instead of hidden on touch devices
-                if (UI.rfb_state === 'normal' && UI.isTouchDevice) {
+                if (UI.rfb_state === 'connected' && UI.isTouchDevice) {
                     viewDragButton.style.display = "inline";
                     viewDragButton.disabled = true;
                 } else {
