@@ -35,7 +35,8 @@ var UI;
 
     UI = {
 
-        rfb_state: 'loaded',
+        connected: false,
+        desktopName: "",
 
         resizeTimeout: null,
         popupStatusTimeout: null,
@@ -171,7 +172,7 @@ var UI;
             // While connected we want to display a confirmation dialogue
             // if the user tries to leave the page
             window.addEventListener('beforeunload', function (e) {
-                if (UI.rfb && UI.rfb_state === 'connected') {
+                if (UI.connected) {
                     var msg = "You are currently connected.";
                     e.returnValue = msg;
                     return msg;
@@ -204,15 +205,16 @@ var UI;
                 UI.rfb = new RFB({'target': document.getElementById('noVNC_canvas'),
                                   'onNotification': UI.notification,
                                   'onUpdateState': UI.updateState,
+                                  'onDisconnected': UI.disconnectFinished,
                                   'onPasswordRequired': UI.passwordRequired,
                                   'onXvpInit': UI.updateXvpButton,
                                   'onClipboard': UI.clipboardReceive,
                                   'onFBUComplete': UI.initialResize,
                                   'onFBResize': UI.updateViewDrag,
-                                  'onDesktopName': UI.updateDocumentTitle});
+                                  'onDesktopName': UI.updateDesktopName});
                 return true;
             } catch (exc) {
-                UI.updateState(null, 'fatal', null, 'Unable to create RFB client -- ' + exc);
+                UI.setStatus('Unable to create RFB client -- ' + exc, 'error');
                 return false;
             }
         },
@@ -270,67 +272,83 @@ var UI;
  *     VISUAL
  * ------v------*/
 
-        updateState: function(rfb, state, oldstate, msg) {
-            UI.rfb_state = state;
+        updateState: function(rfb, state, oldstate) {
             var klass;
             switch (state) {
-                case 'failed':
-                case 'fatal':
-                    klass = "noVNC_status_error";
+                case 'connecting':
+                    UI.setStatus("Connecting");
                     break;
                 case 'connected':
-                    klass = "noVNC_status_normal";
+                    UI.connected = true;
+                    if (rfb && rfb.get_encrypt()) {
+                        UI.setStatus("Connected (encrypted) to " +
+                                     UI.desktopName);
+                    } else {
+                        UI.setStatus("Connected (unencrypted) to " +
+                                     UI.desktopName);
+                    }
+                    break;
+                case 'disconnecting':
+                    UI.setStatus("Disconnecting");
                     break;
                 case 'disconnected':
-                    document.getElementById('noVNC_logo').style.display = "block";
-                    document.getElementById('noVNC_screen').style.display = "none";
-                    /* falls through */
-                case 'loaded':
-                    klass = "noVNC_status_normal";
+                    UI.connected = false;
+                    UI.setStatus("Disconnected");
                     break;
-                default:
-                    klass = "noVNC_status_warn";
-                    break;
-            }
-
-            document.getElementById('noVNC_control_bar')
-                .setAttribute("class", klass);
-
-            if (typeof(msg) !== 'undefined') {
-                document.getElementById('noVNC_status').innerHTML = msg;
             }
 
             UI.updateVisualState();
         },
 
+        setStatus: function (text, status_type) {
+            var klass;
+            switch (status_type) {
+                case 'warning':
+                case 'warn':
+                    klass = "noVNC_status_warn";
+                    break;
+                case 'error':
+                    klass = "noVNC_status_error";
+                    break;
+                case 'normal':
+                case 'info':
+                default:
+                    klass = "noVNC_status_normal";
+                    break;
+            }
+            document.getElementById('noVNC_control_bar')
+                .setAttribute("class", klass);
+            document.getElementById('noVNC_status').innerHTML = text;
+        },
+
         // Disable/enable controls depending on connection state
         updateVisualState: function() {
-            var connected = UI.rfb && UI.rfb_state === 'connected';
-
             //Util.Debug(">> updateVisualState");
-            document.getElementById('noVNC_setting_encrypt').disabled = connected;
-            document.getElementById('noVNC_setting_true_color').disabled = connected;
+            document.getElementById('noVNC_setting_encrypt').disabled = UI.connected;
+            document.getElementById('noVNC_setting_true_color').disabled = UI.connected;
             if (Util.browserSupportsCursorURIs()) {
-                document.getElementById('noVNC_setting_cursor').disabled = connected;
+                document.getElementById('noVNC_setting_cursor').disabled = UI.connected;
             } else {
                 UI.updateSetting('cursor', !UI.isTouchDevice);
                 document.getElementById('noVNC_setting_cursor').disabled = true;
             }
 
             UI.enableDisableViewClip();
-            document.getElementById('noVNC_setting_resize').disabled = connected;
-            document.getElementById('noVNC_setting_shared').disabled = connected;
-            document.getElementById('noVNC_setting_view_only').disabled = connected;
-            document.getElementById('noVNC_setting_path').disabled = connected;
-            document.getElementById('noVNC_setting_repeaterID').disabled = connected;
+            document.getElementById('noVNC_setting_resize').disabled = UI.connected;
+            document.getElementById('noVNC_setting_shared').disabled = UI.connected;
+            document.getElementById('noVNC_setting_view_only').disabled = UI.connected;
+            document.getElementById('noVNC_setting_path').disabled = UI.connected;
+            document.getElementById('noVNC_setting_repeaterID').disabled = UI.connected;
 
-            if (connected) {
+            if (UI.connected) {
                 UI.setViewClip();
                 UI.setMouseButton(1);
                 document.getElementById('noVNC_clipboard_button').style.display = "inline";
                 document.getElementById('noVNC_keyboard_button').style.display = "inline";
                 document.getElementById('noVNC_extra_keys').style.display = "";
                 document.getElementById('noVNC_sendCtrlAltDel_button').style.display = "inline";
+                document.getElementById('noVNC_connectPanel_button').style.display = "none";
+                document.getElementById('noVNC_disconnect_button').style.display = "";
             } else {
                 UI.setMouseButton();
                 document.getElementById('noVNC_clipboard_button').style.display = "none";
@@ -338,30 +356,13 @@ var UI;
                 document.getElementById('noVNC_extra_keys').style.display = "none";
                 document.getElementById('noVNC_sendCtrlAltDel_button').style.display = "none";
                 UI.updateXvpButton(0);
+                document.getElementById('noVNC_connectPanel_button').style.display = "";
+                document.getElementById('noVNC_disconnect_button').style.display = "none";
             }
 
             // State change disables viewport dragging.
             // It is enabled (toggled) by direct click on the button
             UI.updateViewDrag(false);
-
-            switch (UI.rfb_state) {
-                case 'fatal':
-                case 'failed':
-                case 'disconnected':
-                    document.getElementById('noVNC_connectPanel_button').style.display = "";
-                    document.getElementById('noVNC_disconnect_button').style.display = "none";
-                    UI.connSettingsOpen = false;
-                    UI.toggleConnectPanel();
-                    break;
-                case 'loaded':
-                    document.getElementById('noVNC_connectPanel_button').style.display = "";
-                    document.getElementById('noVNC_disconnect_button').style.display = "none";
-                    break;
-                default:
-                    document.getElementById('noVNC_connectPanel_button').style.display = "none";
-                    document.getElementById('noVNC_disconnect_button').style.display = "";
-                    break;
-            }
 
             //Util.Debug("<< updateVisualState");
         },
@@ -754,10 +755,17 @@ var UI;
             // Restore the callback used for initial resize
             UI.rfb.set_onFBUComplete(UI.initialResize);
 
+            // Don't display the connection settings until we're actually disconnected
+        },
+
+        disconnectFinished: function (rfb, reason) {
+            if (typeof reason !== 'undefined') {
+                UI.setStatus(reason, 'error');
+            }
             document.getElementById('noVNC_logo').style.display = "block";
             document.getElementById('noVNC_screen').style.display = "none";
-
-            // Don't display the connection settings until we're actually disconnected
+            UI.connSettingsOpen = false;
+            UI.toggleConnectPanel();
         },
 
 /* ------^-------
@@ -780,7 +788,7 @@ var UI;
                 msg = "Password is required";
             }
             UI.popupStatus(msg);
-            UI.updateState(null, "warning", null, msg);
+            UI.setStatus(msg, "warning");
         },
 
         setPassword: function() {
@@ -851,7 +859,7 @@ var UI;
 
             var screen = UI.screenSize();
 
-            if (screen && UI.rfb_state === 'connected' && UI.rfb.get_display()) {
+            if (screen && UI.connected && UI.rfb.get_display()) {
 
                 var display = UI.rfb.get_display();
                 var resizeMode = UI.getSetting('resize');
@@ -980,7 +988,6 @@ var UI;
         // Handle special cases where clipping is forced on/off or locked
         enableDisableViewClip: function() {
             var resizeSetting = document.getElementById('noVNC_setting_resize');
-            var connected = UI.rfb && UI.rfb_state === 'connected';
 
             if (UI.isSafari) {
                 // Safari auto-hides the scrollbars which makes them
@@ -1002,9 +1009,11 @@ var UI;
             } else if (document.body.msRequestFullscreen && UI.rememberedClip !== null) {
                 // Restore view clip to what it was before fullscreen on IE
                 UI.setViewClip(UI.rememberedClipSetting);
-                document.getElementById('noVNC_setting_clip').disabled = connected || UI.isTouchDevice;
+                document.getElementById('noVNC_setting_clip').disabled =
+                    UI.connected || UI.isTouchDevice;
             } else {
-                document.getElementById('noVNC_setting_clip').disabled = connected || UI.isTouchDevice;
+                document.getElementById('noVNC_setting_clip').disabled =
+                    UI.connected || UI.isTouchDevice;
                 if (UI.isTouchDevice) {
                     UI.setViewClip(true);
                 }
@@ -1025,8 +1034,7 @@ var UI;
 
             // Check if viewport drag is possible. It is only possible
             // if the remote display is clipping the client display.
-            if (UI.rfb_state === 'connected' &&
-                UI.rfb.get_display().get_viewport() &&
+            if (UI.connected && UI.rfb.get_display().get_viewport() &&
                 UI.rfb.get_display().clippingDisplay()) {
 
                 viewDragButton.style.display = "inline";
@@ -1042,7 +1050,7 @@ var UI;
                 }
 
                 // The button is disabled instead of hidden on touch devices
-                if (UI.rfb_state === 'connected' && UI.isTouchDevice) {
+                if (UI.connected && UI.isTouchDevice) {
                     viewDragButton.style.display = "inline";
                     viewDragButton.disabled = true;
                 } else {
@@ -1297,8 +1305,9 @@ var UI;
             UI.rfb.get_mouse().set_focused(true);
         },
 
-        // Display the desktop name in the document title
-        updateDocumentTitle: function(rfb, name) {
+        updateDesktopName: function(rfb, name) {
+            UI.desktopName = name;
+            // Display the desktop name in the document title
             document.title = name + " - noVNC";
         },
 
