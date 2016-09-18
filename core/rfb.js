@@ -245,7 +245,7 @@
     });
 
     this._init_vars();
-    this._cleanupSocket();
+    this._cleanup();
 
     var rmode = this._display.get_render_mode();
     Util.Info("Using native WebSockets, render mode: " + rmode);
@@ -407,7 +407,7 @@
             }
         },
 
-        _cleanupSocket: function () {
+        _cleanup: function () {
             if (this._msgTimer) {
                 clearInterval(this._msgTimer);
                 this._msgTimer = null;
@@ -459,7 +459,7 @@
             this._onUpdateState(this, state, oldstate);
             switch (state) {
                 case 'disconnected':
-                    this._cleanupSocket(); // Make sure we are closed.
+                    this._cleanup(); // Make sure we are closed.
 
                     if (typeof(errorMsg) !== 'undefined') {
                         this._onDisconnected(this, errorMsg);
@@ -477,7 +477,7 @@
                 case 'connecting':
                     // A previous connect may asynchronously cause a connection
                     // so make sure we are still closed.
-                    this._cleanupSocket();
+                    this._cleanup();
                     this._init_vars();
 
                     // WebSocket.onopen transitions to the RFB init states
@@ -486,7 +486,7 @@
 
                 case 'disconnecting':
                     // WebSocket.onclose transitions to 'disconnected'
-                    this._cleanupSocket();
+                    this._cleanup();
 
                     this._disconnTimer = setTimeout(function () {
                         this._fail("Disconnect timeout");
