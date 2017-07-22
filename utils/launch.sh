@@ -23,6 +23,7 @@ usage() {
     echo "    --web WEB             Path to web files (e.g. vnc.html)"
     echo "                          Default: ./"
     echo "    --ssl-only            Disable non-https connections."
+    echo "    --ssl-target          Connect to VNC as SSL client."
     echo "                                    "
     exit 2
 }
@@ -36,6 +37,7 @@ CERT=""
 WEB=""
 proxy_pid=""
 SSLONLY=""
+SSLTARGET=""
 
 die() {
     echo "$*"
@@ -63,6 +65,7 @@ while [ "$*" ]; do
     --cert)    CERT="${OPTARG}"; shift            ;;
     --web)     WEB="${OPTARG}"; shift            ;;
     --ssl-only) SSLONLY="--ssl-only"             ;;
+    --ssl-target) SSLTARGET="--ssl-target"       ;;
     -h|--help) usage                              ;;
     -*) usage "Unknown chrooter option: ${param}" ;;
     *) break                                      ;;
@@ -142,7 +145,7 @@ fi
 
 echo "Starting webserver and WebSockets proxy on port ${PORT}"
 #${HERE}/websockify --web ${WEB} ${CERT:+--cert ${CERT}} ${PORT} ${VNC_DEST} &
-${WEBSOCKIFY} ${SSLONLY} --web ${WEB} ${CERT:+--cert ${CERT}} ${PORT} ${VNC_DEST} &
+${WEBSOCKIFY} ${SSLONLY} ${SSLTARGET} --web ${WEB} ${CERT:+--cert ${CERT}} ${PORT} ${VNC_DEST} &
 proxy_pid="$!"
 sleep 1
 if ! ps -p ${proxy_pid} >/dev/null; then
